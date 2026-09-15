@@ -153,22 +153,24 @@
             const processedLines = [];
             
             for (let line of lines) {
+                // THE NEW FEATURE: Skip Genius section tags (e.g., [Verse 1], [Chorus])
+                if (/^\s*\[.*\]\s*$/.test(line)) {
+                    continue; 
+                }
+
                 const words = line.split(' ');
                 const processedWords = [];
                 
                 for (let word of words) {
-                    // SAFETY NET: If the "word" has no letters (e.g., an isolated dash " - "), leave it alone
                     if (!/[a-zA-Z]/.test(word)) {
                         processedWords.push(word);
                         continue;
                     }
 
-                    // GLOBAL FIX: Split hyphenated words
                     const subWords = word.split('-');
                     const processedSubWords = [];
                     
                     for (let sub of subWords) {
-                        // Skip empty strings (happens if word starts/ends with a hyphen)
                         if (!sub) {
                             processedSubWords.push('');
                             continue;
@@ -204,12 +206,16 @@
                             processedSubWords.push(sub);
                         }
                     }
-                    // THE FIX: Rejoin the hyphenated parts with a slash AND a hyphen
                     processedWords.push(processedSubWords.join('/-'));
                 }
                 processedLines.push(processedWords.join(' '));
             }
-            document.getElementById('output_box').value = processedLines.join('\n');
+            
+            // CLEANUP: Join the lines, but fix any giant blank gaps caused by deleting the tags
+            let finalText = processedLines.join('\n').replace(/\n{3,}/g, '\n\n');
+            
+            // .trim() removes any extra blank lines at the very top or bottom of the lyrics
+            document.getElementById('output_box').value = finalText.trim();
         }
         
         // Copy button logic
