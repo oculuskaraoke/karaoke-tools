@@ -157,11 +157,23 @@
                 const processedWords = [];
                 
                 for (let word of words) {
-                    // GLOBAL FIX: Handle hyphenated words (like track-star) by splitting them first
+                    // SAFETY NET: If the "word" has no letters (e.g., an isolated dash " - "), leave it alone
+                    if (!/[a-zA-Z]/.test(word)) {
+                        processedWords.push(word);
+                        continue;
+                    }
+
+                    // GLOBAL FIX: Split hyphenated words
                     const subWords = word.split('-');
                     const processedSubWords = [];
                     
                     for (let sub of subWords) {
+                        // Skip empty strings (happens if word starts/ends with a hyphen)
+                        if (!sub) {
+                            processedSubWords.push('');
+                            continue;
+                        }
+
                         const match = sub.match(/^([^a-zA-Z]*)([a-zA-Z]+(?:'[a-zA-Z]+)*)([^a-zA-Z]*)$/);
                         
                         if (match) {
@@ -172,20 +184,13 @@
                             
                             let slashedWord = cleanWord; 
                             
-                            // GLOBAL FIX: Never split words that are 1 or 2 letters long (fixes "is", "to", "do")
                             if (cleanWord.length <= 2) {
                                 slashedWord = cleanWord;
-                            }
-                            // 1. Check Overrides
-                            else if (overrides.has(lookup)) {
+                            } else if (overrides.has(lookup)) {
                                 slashedWord = overrides.get(lookup);
-                            } 
-                            // 2. Check Master Dictionary
-                            else if (masterDict.has(lookup)) {
+                            } else if (masterDict.has(lookup)) {
                                 slashedWord = masterDict.get(lookup);
-                            }
-                            // 3. The "Dropped G" Gerund Fallback (e.g. talkin -> talk/in)
-                            else if (lookup.endsWith("in")) {
+                            } else if (lookup.endsWith("in")) {
                                 const gerundLookup = lookup + "g";
                                 if (masterDict.has(gerundLookup)) {
                                     let gerundSlashed = masterDict.get(gerundLookup);
@@ -196,17 +201,17 @@
                             slashedWord = matchCasing(cleanWord, slashedWord);
                             processedSubWords.push(prefix + slashedWord + suffix);
                         } else {
-                            // Leave pure punctuation/numbers alone
                             processedSubWords.push(sub);
                         }
                     }
-                    // Rejoin the hyphenated parts (e.g., track + - + star)
-                    processedWords.push(processedSubWords.join('-'));
+                    // THE FIX: Rejoin the hyphenated parts with a slash AND a hyphen
+                    processedWords.push(processedSubWords.join('/-'));
                 }
                 processedLines.push(processedWords.join(' '));
             }
             document.getElementById('output_box').value = processedLines.join('\n');
         }
+        
         // Copy button logic
         function copyToClipboard() {
             const outputText = document.getElementById('output_box').value;
