@@ -56,7 +56,7 @@
                     if (!line) continue;
                     
                     // Convert any dashes or dots in the file to slashes
-                    let slashed = line.replace(/[-•·]/g, '/');
+                    let slashed = line.replace(/[-•·¥]/g, '/');
                     // Strip the slashes to create a pure alphabetical lookup key
                     let cleanWord = slashed.replace(/\//g, '').toLowerCase();
                     
