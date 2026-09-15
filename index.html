@@ -7,10 +7,56 @@
     <link rel="stylesheet" href="https://pyscript.net/releases/2023.11.1/core.css" />
     <script type="module" src="https://pyscript.net/releases/2023.11.1/core.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-        textarea { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        /* Forced Dark Mode */
+        body { 
+            font-family: sans-serif; 
+            padding: 20px; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background-color: #121212; 
+            color: #e0e0e0; 
+        }
+        
+        h2, p { color: #ffffff; }
+
+        /* Textarea locked to a specific height with automatic scrollbars */
+        textarea { 
+            width: 100%; 
+            height: 250px; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            box-sizing: border-box; 
+            background-color: #1e1e1e; 
+            color: #ffffff; 
+            border: 1px solid #444; 
+            border-radius: 8px;
+            font-size: 16px;
+            resize: none; /* Disables the manual drag-to-resize corner */
+            overflow-y: auto; /* Enables vertical scrolling when text overflows */
+        }
+
+        /* Button Styling */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button { 
+            padding: 12px 24px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 6px;
+            cursor: pointer; 
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
         button:hover { background: #0056b3; }
+        
+        .copy-btn { background: #28a745; }
+        .copy-btn:hover { background: #218838; }
     </style>
 </head>
 <body>
@@ -19,9 +65,14 @@
     <p>Paste your lyrics below to automatically split syllables with slashes.</p>
 
     <!-- UI Elements -->
-    <textarea id="input_box" rows="8" placeholder="Paste lyrics here..."></textarea>
-    <button py-click="process_lyrics">Add Slashes</button>
-    <textarea id="output_box" rows="8" placeholder="Result will appear here..."></textarea>
+    <textarea id="input_box" placeholder="Paste lyrics here..."></textarea>
+    
+    <div class="button-group">
+        <button py-click="process_lyrics">Add Slashes</button>
+        <button class="copy-btn" onclick="copyToClipboard()">Copy Result</button>
+    </div>
+    
+    <textarea id="output_box" placeholder="Result will appear here..."></textarea>
 
     <!-- Tell PyScript to install the pyphen library -->
     <py-config>
@@ -34,10 +85,9 @@
         from pyscript import document
 
         def process_lyrics(event):
-            # Load the dictionary
-            dic = pyphen.Pyphen(lang='en_US')
+            # left=1 and right=1 force the dictionary to split single letters like "a/round"
+            dic = pyphen.Pyphen(lang='en_US', left=1, right=1)
             
-            # Get text from the input box
             input_text = document.getElementById('input_box').value
             
             processed_lines = []
@@ -53,9 +103,31 @@
                     
                 processed_lines.append(" ".join(syllabified_words))
                 
-            # Push the result to the output box
             document.getElementById('output_box').value = "\n".join(processed_lines)
     </py-script>
+
+    <!-- Standard JavaScript for the Copy Button -->
+    <script>
+        function copyToClipboard() {
+            const outputText = document.getElementById('output_box').value;
+            
+            // Modern clipboard API
+            navigator.clipboard.writeText(outputText).then(() => {
+                const copyButton = document.querySelector('.copy-btn');
+                const originalText = copyButton.innerText;
+                
+                // Visual feedback that the copy was successful
+                copyButton.innerText = "Copied!";
+                copyButton.style.background = "#1e7e34";
+                
+                // Reset button text after 2 seconds
+                setTimeout(() => {
+                    copyButton.innerText = originalText;
+                    copyButton.style.background = "#28a745";
+                }, 2000);
+            });
+        }
+    </script>
 
 </body>
 </html>
