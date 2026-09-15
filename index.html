@@ -2,131 +2,146 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Karaoke Syllabifier</title>
-    <!-- Load PyScript -->
-    <link rel="stylesheet" href="https://pyscript.net/releases/2023.11.1/core.css" />
-    <script type="module" src="https://pyscript.net/releases/2023.11.1/core.js"></script>
+    <title>Pro Karaoke Syllabifier</title>
     <style>
-        /* Forced Dark Mode */
-        body { 
-            font-family: sans-serif; 
-            padding: 20px; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            background-color: #121212; 
-            color: #e0e0e0; 
-        }
-        
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; background-color: #121212; color: #e0e0e0; }
         h2, p { color: #ffffff; }
-
-        /* Textarea locked to a specific height with automatic scrollbars */
-        textarea { 
-            width: 100%; 
-            height: 250px; 
-            padding: 15px; 
-            margin-bottom: 15px; 
-            box-sizing: border-box; 
-            background-color: #1e1e1e; 
-            color: #ffffff; 
-            border: 1px solid #444; 
-            border-radius: 8px;
-            font-size: 16px;
-            resize: none; /* Disables the manual drag-to-resize corner */
-            overflow-y: auto; /* Enables vertical scrolling when text overflows */
-        }
-
-        /* Button Styling */
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        button { 
-            padding: 12px 24px; 
-            background: #007bff; 
-            color: white; 
-            border: none; 
-            border-radius: 6px;
-            cursor: pointer; 
-            font-weight: bold;
-            transition: background 0.2s;
-        }
-
+        textarea { width: 100%; height: 250px; padding: 15px; margin-bottom: 15px; box-sizing: border-box; background-color: #1e1e1e; color: #ffffff; border: 1px solid #444; border-radius: 8px; font-size: 16px; resize: none; overflow-y: auto; }
+        .button-group { display: flex; gap: 10px; margin-bottom: 5px; }
+        button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         button:hover { background: #0056b3; }
-        
         .copy-btn { background: #28a745; }
         .copy-btn:hover { background: #218838; }
+        #status { font-size: 14px; color: #aaaaaa; margin-bottom: 15px; display: block; }
     </style>
 </head>
 <body>
 
-    <h2>🎤 Karaoke Syllabifier</h2>
-    <p>Paste your lyrics below to automatically split syllables with slashes.</p>
+    <h2>🎤 Pro Karaoke Syllabifier</h2>
+    <p>Paste your lyrics below. Slashes will be added automatically.</p>
+    <span id="status">⏳ Loading Dictionary...</span>
 
-    <!-- UI Elements -->
     <textarea id="input_box" placeholder="Paste lyrics here..."></textarea>
     
     <div class="button-group">
-        <button py-click="process_lyrics">Add Slashes</button>
+        <button onclick="processLyrics()">Add Slashes</button>
         <button class="copy-btn" onclick="copyToClipboard()">Copy Result</button>
     </div>
     
     <textarea id="output_box" placeholder="Result will appear here..."></textarea>
 
-    <!-- Tell PyScript to install the pyphen library -->
-    <py-config>
-        packages = ["pyphen"]
-    </py-config>
-
-    <!-- The Python Logic -->
-    <py-script>
-        import pyphen
-        from pyscript import document
-
-        def process_lyrics(event):
-            # left=1 and right=1 force the dictionary to split single letters like "a/round"
-            dic = pyphen.Pyphen(lang='en_US', left=1, right=1)
-            
-            input_text = document.getElementById('input_box').value
-            
-            processed_lines = []
-            
-            for line in input_text.split('\n'):
-                words = line.split()
-                syllabified_words = []
-                
-                for word in words:
-                    # Split syllables and replace hyphen with slash
-                    syllabified_word = dic.inserted(word).replace('-', '/')
-                    syllabified_words.append(syllabified_word)
-                    
-                processed_lines.append(" ".join(syllabified_words))
-                
-            document.getElementById('output_box').value = "\n".join(processed_lines)
-    </py-script>
-
-    <!-- Standard JavaScript for the Copy Button -->
     <script>
+        // 1. Storage
+        const masterDict = new Map();
+        
+        // 2. Custom Overrides (These ALWAYS win)
+        const overrides = new Map([
+            ["karaoke", "ka/ra/o/ke"],
+            ["you", "you"], // Forces "you" to never split
+        ]);
+
+        // 3. Load the Dictionary automatically on page load
+        async function loadDictionary() {
+            try {
+                // Looks for dictionary.txt in your GitHub repo
+                const response = await fetch('dictionary.txt');
+                if (!response.ok) throw new Error("File not found");
+                
+                const text = await response.text();
+                const lines = text.split('\n');
+                
+                let count = 0;
+                for (let line of lines) {
+                    line = line.trim();
+                    if (!line) continue;
+                    
+                    // Convert any dashes or dots in the file to slashes
+                    let slashed = line.replace(/[-•·]/g, '/');
+                    // Strip the slashes to create a pure alphabetical lookup key
+                    let cleanWord = slashed.replace(/\//g, '').toLowerCase();
+                    
+                    masterDict.set(cleanWord, slashed);
+                    count++;
+                }
+                document.getElementById('status').innerText = `✅ Engine Ready: Loaded ${count.toLocaleString()} perfect words.`;
+            } catch (error) {
+                document.getElementById('status').innerText = `⚠️ dictionary.txt not found. Running on Custom Overrides only.`;
+            }
+        }
+
+        // Helper: Match original capitalization
+        function matchCasing(original, slashed) {
+            if (original === original.toUpperCase() && original.length > 1) {
+                return slashed.toUpperCase();
+            }
+            if (original[0] === original[0].toUpperCase()) {
+                return slashed.charAt(0).toUpperCase() + slashed.slice(1);
+            }
+            return slashed;
+        }
+
+        // 4. The Processing Logic
+        function processLyrics() {
+            const inputText = document.getElementById('input_box').value;
+            const lines = inputText.split('\n');
+            const processedLines = [];
+            
+            for (let line of lines) {
+                const words = line.split(' ');
+                const processedWords = [];
+                
+                for (let word of words) {
+                    // Isolate punctuation from the actual letters (e.g. "sight?")
+                    const match = word.match(/^([^a-zA-Z]*)([a-zA-Z]+)([^a-zA-Z]*)$/);
+                    
+                    if (match) {
+                        const prefix = match[1];
+                        const cleanWord = match[2];
+                        const suffix = match[3];
+                        const lookup = cleanWord.toLowerCase();
+                        
+                        let slashedWord = cleanWord; // Default to whole word
+                        
+                        // Check Overrides first, then Master Dictionary
+                        if (overrides.has(lookup)) {
+                            slashedWord = overrides.get(lookup);
+                        } else if (masterDict.has(lookup)) {
+                            slashedWord = masterDict.get(lookup);
+                        }
+                        
+                        // Re-apply original casing and punctuation
+                        slashedWord = matchCasing(cleanWord, slashedWord);
+                        processedWords.append(prefix + slashedWord + suffix);
+                    } else {
+                        // If it's purely punctuation or numbers, leave it alone
+                        processedWords.push(word);
+                    }
+                }
+                processedLines.push(processedWords.join(' '));
+            }
+            document.getElementById('output_box').value = processedLines.join('\n');
+        }
+
+        // Copy button logic
         function copyToClipboard() {
             const outputText = document.getElementById('output_box').value;
-            
-            // Modern clipboard API
             navigator.clipboard.writeText(outputText).then(() => {
-                const copyButton = document.querySelector('.copy-btn');
-                const originalText = copyButton.innerText;
-                
-                // Visual feedback that the copy was successful
-                copyButton.innerText = "Copied!";
-                copyButton.style.background = "#1e7e34";
-                
-                // Reset button text after 2 seconds
+                const copyBtn = document.querySelector('.copy-btn');
+                const origText = copyBtn.innerText;
+                copyBtn.innerText = "Copied!";
+                copyBtn.style.background = "#1e7e34";
                 setTimeout(() => {
-                    copyButton.innerText = originalText;
-                    copyButton.style.background = "#28a745";
+                    copyBtn.innerText = origText;
+                    copyBtn.style.background = "#28a745";
                 }, 2000);
             });
         }
+
+        // Boot the engine when the script loads
+        loadDictionary();
+        
+        // Small polyfill for push/append array difference in logic
+        Array.prototype.append = function(item) { this.push(item); };
     </script>
 
 </body>
