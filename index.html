@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Karaoke Syllabifier</title>
+    <!-- Load PyScript -->
+    <link rel="stylesheet" href="https://pyscript.net/releases/2023.11.1/core.css" />
+    <script type="module" src="https://pyscript.net/releases/2023.11.1/core.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        textarea { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <h2>🎤 Karaoke Syllabifier</h2>
+    <p>Paste your lyrics below to automatically split syllables with slashes.</p>
+
+    <!-- UI Elements -->
+    <textarea id="input_box" rows="8" placeholder="Paste lyrics here..."></textarea>
+    <button py-click="process_lyrics">Add Slashes</button>
+    <textarea id="output_box" rows="8" placeholder="Result will appear here..."></textarea>
+
+    <!-- Tell PyScript to install the pyphen library -->
+    <py-config>
+        packages = ["pyphen"]
+    </py-config>
+
+    <!-- The Python Logic -->
+    <py-script>
+        import pyphen
+        from pyscript import document
+
+        def process_lyrics(event):
+            # Load the dictionary
+            dic = pyphen.Pyphen(lang='en_US')
+            
+            # Get text from the input box
+            input_text = document.getElementById('input_box').value
+            
+            processed_lines = []
+            
+            for line in input_text.split('\n'):
+                words = line.split()
+                syllabified_words = []
+                
+                for word in words:
+                    # Split syllables and replace hyphen with slash
+                    syllabified_word = dic.inserted(word).replace('-', '/')
+                    syllabified_words.append(syllabified_word)
+                    
+                processed_lines.append(" ".join(syllabified_words))
+                
+            # Push the result to the output box
+            document.getElementById('output_box').value = "\n".join(processed_lines)
+    </py-script>
+
+</body>
+</html>
