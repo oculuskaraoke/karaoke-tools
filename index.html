@@ -153,8 +153,9 @@
             const processedLines = [];
             
             for (let line of lines) {
-                // THE NEW FEATURE: Skip Genius section tags (e.g., [Verse 1], [Chorus])
+                // THE FIX: Instead of deleting the tag, we replace it with a blank line to prevent sections from merging.
                 if (/^\s*\[.*\]\s*$/.test(line)) {
+                    processedLines.push(''); 
                     continue; 
                 }
 
@@ -211,10 +212,10 @@
                 processedLines.push(processedWords.join(' '));
             }
             
-            // CLEANUP: Join the lines, but fix any giant blank gaps caused by deleting the tags
+            // CLEANUP: Regulates the blank lines. Turns 3+ line breaks (which happens if a tag was replaced next to an existing blank line) into exactly 2 (one blank gap).
             let finalText = processedLines.join('\n').replace(/\n{3,}/g, '\n\n');
             
-            // .trim() removes any extra blank lines at the very top or bottom of the lyrics
+            // .trim() removes any extra blank lines if the song started with an [Intro] tag
             document.getElementById('output_box').value = finalText.trim();
         }
         
