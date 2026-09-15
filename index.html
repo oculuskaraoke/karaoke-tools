@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Pro Karaoke Syllabifier</title>
+    <title>Oculus Karaoke Syllabifier</title>
     <style>
         body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; background-color: #121212; color: #e0e0e0; }
         h2, p { color: #ffffff; }
@@ -17,7 +17,7 @@
 </head>
 <body>
 
-    <h2>🎤 Pro Karaoke Syllabifier</h2>
+    <h2>👁️ Oculus Karaoke Syllabifier</h2>
     <p>Paste your lyrics below. Slashes will be added automatically.</p>
     <span id="status">⏳ Loading Dictionary...</span>
 
@@ -36,8 +36,66 @@
         
         // 2. Custom Overrides (These ALWAYS win)
         const overrides = new Map([
+            // Karaoke specifics
             ["karaoke", "ka/ra/o/ke"],
-            ["you", "you"], // Forces "you" to never split
+            ["you", "you"], 
+            ["every", "ev/ery"],
+
+            // Multi-Syllable Contractions (Forces the correct slash placement)
+            ["isn't", "is/n't"],
+            ["aren't", "are/n't"],
+            ["wasn't", "was/n't"],
+            ["weren't", "were/n't"],
+            ["haven't", "have/n't"],
+            ["hasn't", "has/n't"],
+            ["hadn't", "had/n't"],
+            ["doesn't", "does/n't"],
+            ["didn't", "did/n't"],
+            ["wouldn't", "would/n't"],
+            ["shouldn't", "should/n't"],
+            ["couldn't", "could/n't"],
+            ["mustn't", "must/n't"],
+            ["needn't", "need/n't"],
+            ["mightn't", "might/n't"],
+            ["oughtn't", "ought/n't"],
+
+            // Single-Syllable Contractions (Protects them from bad dictionary splits)
+            ["can't", "can't"],
+            ["won't", "won't"],
+            ["don't", "don't"],
+            ["ain't", "ain't"],
+            ["i'm", "i'm"],
+            ["i've", "i've"],
+            ["i'll", "i'll"],
+            ["i'd", "i'd"],
+            ["you're", "you're"],
+            ["you've", "you've"],
+            ["you'll", "you'll"],
+            ["you'd", "you'd"],
+            ["he's", "he's"],
+            ["he'll", "he'll"],
+            ["he'd", "he'd"],
+            ["she's", "she's"],
+            ["she'll", "she'll"],
+            ["she'd", "she'd"],
+            ["it's", "it's"],
+            ["we're", "we're"],
+            ["we've", "we've"],
+            ["we'll", "we'll"],
+            ["we'd", "we'd"],
+            ["they're", "they're"],
+            ["they've", "they've"],
+            ["they'll", "they'll"],
+            ["they'd", "they'd"],
+            ["that's", "that's"],
+            ["who's", "who's"],
+            ["what's", "what's"],
+            ["where's", "where's"],
+            ["when's", "when's"],
+            ["why's", "why's"],
+            ["how's", "how's"],
+            ["let's", "let's"],
+            ["y'all", "y'all"]
         ]);
 
         // 3. Load the Dictionary automatically on page load
@@ -71,12 +129,19 @@
 
         // Helper: Match original capitalization
         function matchCasing(original, slashed) {
+            // 1. Force the dictionary result to a clean lowercase slate
+            slashed = slashed.toLowerCase();
+            
+            // 2. If your original lyric was ALL CAPS (e.g. "FAST")
             if (original === original.toUpperCase() && original.length > 1) {
                 return slashed.toUpperCase();
             }
+            // 3. If your original lyric was Title Case (e.g. "Fast")
             if (original[0] === original[0].toUpperCase()) {
                 return slashed.charAt(0).toUpperCase() + slashed.slice(1);
             }
+            
+            // 4. If your original lyric was lowercase, return lowercase
             return slashed;
         }
 
@@ -91,8 +156,8 @@
                 const processedWords = [];
                 
                 for (let word of words) {
-                    // Isolate punctuation from the actual letters (e.g. "sight?")
-                    const match = word.match(/^([^a-zA-Z]*)([a-zA-Z]+)([^a-zA-Z]*)$/);
+                    // UPDATED REGEX: Allows apostrophes INSIDE the word (like didn't, can't)
+                    const match = word.match(/^([^a-zA-Z]*)([a-zA-Z]+(?:'[a-zA-Z]+)*)([^a-zA-Z]*)$/);
                     
                     if (match) {
                         const prefix = match[1];
@@ -100,20 +165,31 @@
                         const suffix = match[3];
                         const lookup = cleanWord.toLowerCase();
                         
-                        let slashedWord = cleanWord; // Default to whole word
+                        let slashedWord = cleanWord; 
                         
-                        // Check Overrides first, then Master Dictionary
+                        // 1. Check Overrides
                         if (overrides.has(lookup)) {
                             slashedWord = overrides.get(lookup);
-                        } else if (masterDict.has(lookup)) {
+                        } 
+                        // 2. Check Master Dictionary
+                        else if (masterDict.has(lookup)) {
                             slashedWord = masterDict.get(lookup);
                         }
+                        // 3. The "Dropped G" Gerund Fallback (e.g. talkin -> talk/in)
+                        else if (lookup.endsWith("in")) {
+                            const gerundLookup = lookup + "g";
+                            if (masterDict.has(gerundLookup)) {
+                                let gerundSlashed = masterDict.get(gerundLookup);
+                                // Takes "talk/ing" and replaces "ing" with "in"
+                                slashedWord = gerundSlashed.replace(/ing$/i, 'in');
+                            }
+                        }
                         
-                        // Re-apply original casing and punctuation
+                        // Re-apply casing and punctuation
                         slashedWord = matchCasing(cleanWord, slashedWord);
                         processedWords.append(prefix + slashedWord + suffix);
                     } else {
-                        // If it's purely punctuation or numbers, leave it alone
+                        // Leave pure punctuation/numbers alone
                         processedWords.push(word);
                     }
                 }
